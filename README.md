@@ -18,18 +18,19 @@ Equilibria is a hybrid PoW/PoS decentralized oracle node network
 Use-cases span from stablecoins to eSports
 
 ### For announcements:
-[Website](https://equilibria.network)
-[Twitter](https://twitter.com/EquilibriaCC)  
-[Discord](https://discord.gg/pDyfUTs)
+[Website](https://equilibriacc.github.io)
+[Announcements](https://t.me/EquilibriaAnnouncements)
+[Twitter](https://twitter.com/equilibriadevs)  
+[Discord](https://discord.gg/Ps9pBmc2QX)
 
 
 # General Information
 Copyright (c) 2014-2019 The Monero Project.   
-Copyright (c) 2018-2019 Project Triton/Equilibria.
+Copyright (c) 2018-2022 Project Triton/Equilibria.
 Portions Copyright (c) 2012-2013 The Cryptonote developers.
 
 ## Current maintainer
-- Harrison Hesslink
+- John
 
 **Anyone is welcome to contribute to Equilibria's codebase!** If you have a fix or code change, feel free to submit it as a pull request directly to the "master" branch. In cases where the change is relatively small or does not affect other parts of the codebase it may be merged in immediately by any one of the collaborators. On the other hand, if the change is particularly large or complex, it is expected that it will be discussed at length either well in advance of the pull request being submitted, or even directly on the pull request.
 
