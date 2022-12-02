@@ -150,7 +150,6 @@ namespace cryptonote
     bool set_track_uses(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_inactivity_lock_timeout(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_setup_background_mining(const std::vector<std::string> &args = std::vector<std::string>());
-    bool set_device_name(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_export_format(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_persistent_rpc_client_id(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_auto_mine_for_rpc_payment_threshold(const std::vector<std::string> &args = std::vector<std::string>());
@@ -221,7 +220,6 @@ namespace cryptonote
     bool verify(const std::vector<std::string> &args);
     bool export_key_images(const std::vector<std::string> &args);
     bool import_key_images(const std::vector<std::string> &args);
-    bool hw_key_images_sync(const std::vector<std::string> &args);
     bool hw_reconnect(const std::vector<std::string> &args);
     bool export_outputs(const std::vector<std::string> &args);
     bool import_outputs(const std::vector<std::string> &args);
@@ -274,7 +272,6 @@ namespace cryptonote
     bool create_contract(const std::vector<std::string>& args);
 
 
-    bool cold_sign_tx(const std::vector<tools::wallet2::pending_tx>& ptx_vector, tools::wallet2::signed_tx_set &exported_txs, std::vector<cryptonote::address_parse_info> &dsts_info, std::function<bool(const tools::wallet2::signed_tx_set &)> accept_func);
     uint64_t get_daemon_blockchain_height(std::string& err);
     bool try_connect_to_daemon(bool silent = false, uint32_t* version = nullptr);
     bool ask_wallet_create_if_needed();
@@ -284,8 +281,6 @@ namespace cryptonote
     bool process_ring_members(const std::vector<tools::wallet2::pending_tx>& ptx_vector, std::ostream& ostr, bool verbose);
     std::string get_prompt() const;
     bool print_seed(bool encrypted);
-    void key_images_sync_intern();
-    void on_refresh_finished(uint64_t start_height, uint64_t fetched_blocks, bool is_init, bool received_money);
     std::pair<std::string, std::string> show_outputs_line(const std::vector<uint64_t> &heights, uint64_t blockchain_height, uint64_t highlight_idx = std::numeric_limits<uint64_t>::max()) const;
     bool freeze_thaw(const std::vector<std::string>& args, bool freeze);
     bool prompt_if_old(const std::vector<tools::wallet2::pending_tx> &ptx_vector);
@@ -357,9 +352,6 @@ namespace cryptonote
     virtual void on_money_spent(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& in_tx, uint64_t amount, const cryptonote::transaction& spend_tx, const cryptonote::subaddress_index& subaddr_index);
     virtual void on_skip_transaction(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx);
     virtual boost::optional<epee::wipeable_string> on_get_password(const char *reason);
-    virtual void on_device_button_request(uint64_t code);
-    virtual boost::optional<epee::wipeable_string> on_device_pin_request();
-    virtual boost::optional<epee::wipeable_string> on_device_passphrase_request(bool & on_device);
     //----------------------------------------------------------
 
     friend class refresh_progress_reporter_t;

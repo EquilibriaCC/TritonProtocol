@@ -2,8 +2,8 @@ packages:=boost openssl zeromq libiconv
 
 native_packages :=
 
-hardware_packages := hidapi protobuf libusb
-hardware_native_packages := native_protobuf
+hardware_packages := hidapi libusb
+hardware_native_packages :=
 
 android_native_packages = android_ndk
 android_packages = ncurses readline sodium

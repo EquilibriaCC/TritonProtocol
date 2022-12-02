@@ -32,7 +32,6 @@
 #include "crypto/crypto.h"
 #include "crypto/chacha.h"
 #include "ringct/rctTypes.h"
-#include "cryptonote_config.h"
 
 
 #ifndef USE_DEVICE_LEDGER
@@ -55,7 +54,6 @@ namespace cryptonote
     struct account_keys;
     struct subaddress_index;
     struct tx_destination_entry;
-    struct keypair;
     class transaction_prefix;
 }
 
@@ -67,22 +65,6 @@ namespace hw {
                                     std::string(" (device.hpp line ")+std::to_string(__LINE__)+std::string(").")); \
            return false;
     }
-
-    class device_progress {
-    public:
-      virtual double progress() const { return 0; }
-      virtual bool indeterminate() const { return false; }
-    };
-
-    class i_device_callback {
-    public:
-        virtual void on_button_request(uint64_t code=0) {}
-        virtual void on_button_pressed() {}
-        virtual boost::optional<epee::wipeable_string> on_pin_request() { return boost::none; }
-        virtual boost::optional<epee::wipeable_string> on_passphrase_request(bool & on_device) { on_device = true; return boost::none; }
-        virtual void on_progress(const device_progress& event) {}
-        virtual ~i_device_callback() = default;
-    };
 
     class device {
     protected:
@@ -104,15 +86,7 @@ namespace hw {
         enum device_type
         {
           SOFTWARE = 0,
-          LEDGER = 1,
-          TREZOR = 2
-        };
-
-
-        enum device_protocol_t {
-            PROTOCOL_DEFAULT,
-            PROTOCOL_PROXY,     // Originally defined by Ledger
-            PROTOCOL_COLD,      // Originally defined by Trezor
+          LEDGER = 1
         };
 
         /* ======================================================================= */
@@ -132,12 +106,6 @@ namespace hw {
 
         virtual device_type get_type() const = 0;
 
-        virtual device_protocol_t device_protocol() const { return PROTOCOL_DEFAULT; };
-        virtual void set_callback(i_device_callback * callback) {};
-        virtual void set_derivation_path(const std::string &derivation_path) {};
-
-        virtual void set_pin(const epee::wipeable_string & pin) {}
-        virtual void set_passphrase(const epee::wipeable_string & passphrase) {}
 
         /* ======================================================================= */
         /*  LOCKER                                                                 */
@@ -232,14 +200,6 @@ namespace hw {
         virtual bool  mlsag_sign(const rct::key &c, const rct::keyV &xx, const rct::keyV &alpha, const size_t rows, const size_t dsRows, rct::keyV &ss) = 0;
 
         virtual bool  close_tx(void) = 0;
-
-        virtual bool  has_ki_cold_sync(void) const { return false; }
-        virtual bool  has_tx_cold_sign(void) const { return false; }
-        virtual bool  has_ki_live_refresh(void) const { return true; }
-        virtual bool  compute_key_image(const cryptonote::account_keys& ack, const crypto::public_key& out_key, const crypto::key_derivation& recv_derivation, size_t real_output_index, const cryptonote::subaddress_index& received_index, cryptonote::keypair& in_ephemeral, crypto::key_image& ki) { return false; }
-        virtual void  computing_key_images(bool started) {};
-        virtual void  set_network_type(cryptonote::network_type network_type) { }
-        virtual void  display_address(const cryptonote::subaddress_index& index, const boost::optional<crypto::hash8> &payment_id) {}
 
     protected:
         device_mode mode;

@@ -327,19 +327,6 @@ struct MultisigState {
     uint32_t total;
 };
 
-
-struct DeviceProgress {
-    DeviceProgress(): m_progress(0), m_indeterminate(false) {}
-    DeviceProgress(double progress, bool indeterminate=false): m_progress(progress), m_indeterminate(indeterminate) {}
-
-    virtual double progress() const { return m_progress; }
-    virtual bool indeterminate() const { return m_indeterminate; }
-
-protected:
-    double m_progress;
-    bool m_indeterminate;
-};
-
 struct Wallet;
 struct WalletListener
 {
@@ -383,36 +370,6 @@ struct WalletListener
     virtual void refreshed() = 0;
 
     /**
-     * @brief called by device if the action is required
-     */
-    virtual void onDeviceButtonRequest(uint64_t code) { (void)code; }
-
-    /**
-     * @brief called by device if the button was pressed
-     */
-    virtual void onDeviceButtonPressed() { }
-
-    /**
-     * @brief called by device when PIN is needed
-     */
-    virtual optional<std::string> onDevicePinRequest() {
-        throw std::runtime_error("Not supported");
-    }
-
-    /**
-     * @brief called by device when passphrase entry is needed
-     */
-    virtual optional<std::string> onDevicePassphraseRequest(bool & on_device) {
-        on_device = true;
-        return optional<std::string>();
-    }
-
-    /**
-     * @brief Signalizes device operation progress
-     */
-    virtual void onDeviceProgress(const DeviceProgress & event) { (void)event; };
-
-    /**
      * @brief If the listener is created before the wallet this enables to set created wallet object
      */
     virtual void onSetWallet(Wallet * wallet) { (void)wallet; };
@@ -427,8 +384,7 @@ struct Wallet
 {
     enum Device {
         Device_Software = 0,
-        Device_Ledger = 1,
-        Device_Trezor = 2
+        Device_Ledger = 1
     };
 
     enum Status {
@@ -454,8 +410,6 @@ struct Wallet
     //! returns both error and error string atomically. suggested to use in instead of status() and errorString()
     virtual void statusWithErrorString(int& status, std::string& errorString) const = 0;
     virtual bool setPassword(const std::string &password) = 0;
-    virtual bool setDevicePin(const std::string &pin) { (void)pin; return false; };
-    virtual bool setDevicePassphrase(const std::string &passphrase) { (void)passphrase; return false; };
     virtual std::string address(uint32_t accountIndex = 0, uint32_t addressIndex = 0) const = 0;
     std::string mainAddress() const { return address(0, 0); }
     virtual std::string path() const = 0;
@@ -1047,11 +1001,6 @@ struct Wallet
     virtual Device getDeviceType() const = 0;
 
     virtual PendingTransaction* stakePending(const std::string& service_node_key, const std::string& address, const std::string& amount) = 0;
-    //! cold-device protocol key image sync
-    virtual uint64_t coldKeyImageSync(uint64_t &spent, uint64_t &unspent) = 0;
-
-    //! shows address on device display
-    virtual void deviceShowAddress(uint32_t accountIndex, uint32_t addressIndex, const std::string &paymentId) = 0;
 };
 
 /**
