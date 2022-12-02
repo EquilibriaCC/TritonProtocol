@@ -134,8 +134,7 @@ if (BUILD_GUI_DEPS)
             ringct_basic
             checkpoints
             version
-            net
-            device_trezor)
+            net)
 
     foreach(lib ${libs_to_merge})
         list(APPEND objlibs $<TARGET_OBJECTS:obj_${lib}>) # matches naming convention in src/CMakeLists.txt

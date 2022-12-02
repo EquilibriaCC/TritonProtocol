@@ -219,7 +219,6 @@ if(NOT MANUAL_SUBMODULES)
 
     message(STATUS "Checking submodules")
     check_submodule(external/miniupnp)
-    check_submodule(external/unbound)
     check_submodule(external/rapidjson)
   endif()
 endif()
@@ -489,13 +488,12 @@ if(POLICY CMP0079)
   cmake_policy(SET CMP0079 NEW)
 endif()
 
-add_library(libunbound INTERFACE)
 add_library(miniupnpc INTERFACE)
 
 add_subdirectory(external)
 
 # Final setup for libunbound
-include_directories(${UNBOUND_INCLUDE})
+include_directories(${UNBOUND_INCLUDE_DIR})
 
 # Final setup for easylogging++
 include_directories(${EASYLOGGING_INCLUDE})
@@ -888,7 +886,7 @@ if(${BOOST_IGNORE_SYSTEM_PATHS} STREQUAL "ON")
 endif()
 
 set(OLD_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-set(Boost_NO_BOOST_CMAKE ON)
+#set(Boost_NO_BOOST_CMAKE ON)
 
 if(STATIC)
   if(MINGW)
@@ -908,18 +906,21 @@ if(DEPENDS)
 endif()
 
 if(WIN32)
-  set(BOOST_LIBRARIES system filesystem thread date_time chrono regex serialization program_options locale)
+  set(Boost_LIBRARIES system filesystem thread date_time chrono regex serialization program_options locale)
 else()
-  set(BOOST_LIBRARIES system filesystem thread date_time chrono regex serialization program_options)
+  set(Boost_LIBRARIES system filesystem thread date_time chrono regex serialization program_options)
 endif()
 
-find_package(Boost 1.62.0 QUIET REQUIRED COMPONENTS ${BOOST_LIBRARIES})
-include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+find_package(Boost 1.62.0 QUIET REQUIRED COMPONENTS ${Boost_LIBRARIES})
+include_directories(${Boost_INCLUDE_DIRS})
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ${OLD_LIB_SUFFIXES})
 if(NOT Boost_FOUND)
   die("Could not find Boost libraries, please make sure you have installed Boost or libboost-all-dev >=1.62 or the equivalent")
 elseif(Boost_FOUND)
+  message(STATUS "Found Boost Version: ${Boost_VERSION_STRING}")
+  message(STATUS "Boost Includes Dir is: ${Boost_INCLUDE_DIRS}")
+  message(STATUS "Boost Libraries Dir is: ${Boost_LIBRARY_DIRS}")
   if(Boost_VERSION VERSION_LESS 1.62.0 AND NOT (OPENSSL_VERSION VERSION_LESS 1.1))
     set(BOOST_BEFORE_1_62 true)
   endif()
