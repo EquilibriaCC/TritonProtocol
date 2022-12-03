@@ -1394,9 +1394,6 @@ namespace cryptonote
       uint64_t reserved_offset;
       uint64_t expected_reward;
       std::string prev_hash;
-      uint64_t seed_height;
-      std::string seed_hash;
-      std::string next_seed_hash;
       blobdata blocktemplate_blob;
       blobdata blockhashing_blob;
 
@@ -1409,11 +1406,8 @@ namespace cryptonote
         KV_SERIALIZE(reserved_offset)
         KV_SERIALIZE(expected_reward)
         KV_SERIALIZE(prev_hash)
-        KV_SERIALIZE(seed_height)
         KV_SERIALIZE(blocktemplate_blob)
         KV_SERIALIZE(blockhashing_blob)
-        KV_SERIALIZE(seed_hash)
-        KV_SERIALIZE(next_seed_hash)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;
@@ -2532,21 +2526,13 @@ namespace cryptonote
     struct response_t: public rpc_access_response_base
     {
       uint64_t emission_amount;
-      std::string wide_emission_amount;
-      uint64_t emission_amount_top64;
       uint64_t fee_amount;
-      std::string wide_fee_amount;
-      uint64_t fee_amount_top64;
       uint64_t burn_amount;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_PARENT(rpc_access_response_base)
         KV_SERIALIZE(emission_amount)
-        KV_SERIALIZE(wide_emission_amount)
-        KV_SERIALIZE(emission_amount_top64)
         KV_SERIALIZE(fee_amount)
-        KV_SERIALIZE(wide_fee_amount)
-        KV_SERIALIZE(fee_amount_top64)
         KV_SERIALIZE(burn_amount)
       END_KV_SERIALIZE_MAP()
     };
@@ -2836,9 +2822,6 @@ namespace cryptonote
     struct response_t: public rpc_access_response_base
     {
       std::string hashing_blob;
-      uint64_t seed_height;
-      std::string seed_hash;
-      std::string next_seed_hash;
       uint32_t cookie;
       uint64_t diff;
       uint64_t credits_per_hash_found;
@@ -2847,9 +2830,6 @@ namespace cryptonote
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE_PARENT(rpc_access_response_base)
         KV_SERIALIZE(hashing_blob)
-        KV_SERIALIZE(seed_height)
-        KV_SERIALIZE(seed_hash)
-        KV_SERIALIZE(next_seed_hash)
         KV_SERIALIZE(cookie)
         KV_SERIALIZE(diff)
         KV_SERIALIZE(credits_per_hash_found)

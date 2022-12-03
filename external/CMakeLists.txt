@@ -54,11 +54,18 @@ target_link_libraries(miniupnpc INTERFACE libminiupnpc-static)
   # The unbound CMakeLists.txt can set it, since it's also needed for the
   # static OpenSSL libraries set up there after with target_link_libraries.
 
-message(STATUS "Using in-tree unbound")
-add_subdirectory(unbound)
-target_link_libraries(libunbound INTERFACE unbound)
-target_include_directories(libunbound INTERFACE unbound/libunbound)
-set(UNBOUND_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/unbound/libunbound" PARENT_SCOPE)
+find_package(Unbound)
+
+if(NOT UNBOUND_INCLUDE_DIR)
+  die("Could not find libunbound")
+else()
+  message(STATUS "Found libunbound include (unbound.h) in ${UNBOUND_INCLUDE_DIR}")
+  if(UNBOUND_LIBRARIES)
+    message(STATUS "Found libunbound library")
+  else()
+    die("Found libunbound includes, but could not find libunbound library. Please make sure you have installed libunbound or libunbound-dev or the equivalent")
+  endif()
+endif()
 
 add_subdirectory(db_drivers)
 add_subdirectory(easylogging++)

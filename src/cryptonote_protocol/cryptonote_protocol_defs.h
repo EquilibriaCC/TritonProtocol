@@ -366,7 +366,7 @@ namespace cryptonote
 
      struct request_t
      {
-       std::vector<triton::service_node_deregister::vote> votes;
+       std::vector<service_nodes::deregister_vote> votes;
        BEGIN_KV_SERIALIZE_MAP()
          KV_SERIALIZE_CONTAINER_POD_AS_BLOB(votes)
        END_KV_SERIALIZE_MAP()

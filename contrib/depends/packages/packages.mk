@@ -1,9 +1,9 @@
-packages:=boost openssl zeromq libiconv
+packages:=boost openssl zeromq libiconv expat ldns unbound
 
-native_packages := native_ccache
+native_packages :=
 
-hardware_packages := hidapi protobuf libusb
-hardware_native_packages := native_protobuf
+hardware_packages := hidapi libusb
+hardware_native_packages :=
 
 android_native_packages = android_ndk
 android_packages = ncurses readline sodium
