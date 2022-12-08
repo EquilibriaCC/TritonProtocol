@@ -8989,7 +8989,6 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
         payment_id = payment_id.substr(0,16);
       std::string note = m_wallet->get_tx_note(pd.m_tx_hash);
       std::string destination = m_wallet->get_subaddress_as_str({m_current_subaddress_account, pd.m_subaddr_index.minor});
-      const std::string type = pd.m_coinbase ? tr("block") : tr("in");
       const bool unlocked = m_wallet->is_transfer_unlocked(pd.m_unlock_time, pd.m_block_height);
       std::string locked_msg = "unlocked";
       if (!unlocked)
@@ -9010,16 +9009,15 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
         }
       }
       transfers.push_back({
-        type,
         pd.m_block_height,
         pd.m_timestamp,
-        type,
+        pd.m_type,
         true,
         pd.m_amount,
         pd.m_tx_hash,
         payment_id,
         0,
-        {{destination, pd.m_amount}},
+        {{destination, pd.m_amount, pd.m_unlock_time}},
         {pd.m_subaddr_index.minor},
         note,
         locked_msg
@@ -9034,19 +9032,39 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
       const tools::wallet2::confirmed_transfer_details &pd = i->second;
       uint64_t change = pd.m_change == (uint64_t)-1 ? 0 : pd.m_change; // change may not be known
       uint64_t fee = pd.m_amount_in - pd.m_amount_out;
-      std::vector<std::pair<std::string, uint64_t>> destinations;
-      for (const auto &d: pd.m_dests) {
-        destinations.push_back({d.address(m_wallet->nettype(), pd.m_payment_id), d.amount});
+
+      std::vector<transfer_view::dest_output> destinations(pd.m_dests.size());
+      for(size_t dest_index = 0; dest_index < pd.m_dests.size(); ++dest_index)
+      {
+        const tx_destination_entry &dest = pd.m_dests[dest_index];
+        transfer_view::dest_output &output = destinations[dest_index];
+        output.wallet_addr = get_account_address_as_str(m_wallet->nettype(), dest.is_subaddress, dest.addr);
+        output.amount = dest.amount;
+        output.unlock_time = (dest_index < pd.m_unlock_times.size()) ? pd.m_unlock_times[dest_index] : 0;
       }
+
+      const uint64_t staking_duration = service_nodes::get_staking_requirement_lock_blocks(m_wallet->nettype());
+
+      tools::pay_type type = tools::pay_type::out;
+      for(size_t unlock_index = 0; unlock_index < pd.m_unlock_times.size() && type != tools::pay_type::stake; ++unlock_index)
+      {
+        uint64_t unlock_time = pd.m_unlock_times[unlock_index];
+        if(unlock_time < pd.m_block_height)
+          continue;
+
+        uint64_t lock_duration = unlock_time - pd.m_block_height;
+        if(lock_duration >= staking_duration)
+          type = tools::pay_type::stake;
+      }
+
       std::string payment_id = string_tools::pod_to_hex(i->second.m_payment_id);
       if (payment_id.substr(16).find_first_not_of('0') == std::string::npos)
         payment_id = payment_id.substr(0,16);
       std::string note = m_wallet->get_tx_note(i->first);
       transfers.push_back({
-        "out",
         pd.m_block_height,
         pd.m_timestamp,
-        "out",
+        type,
         true,
         pd.m_amount_in - change - fee,
         i->first,
@@ -9054,8 +9072,7 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
         fee,
         destinations,
         pd.m_subaddr_indices,
-        note,
-        "-"
+        note
       });
     }
   }
@@ -9084,10 +9101,9 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
         if (i->second.m_double_spend_seen)
           double_spend_note = tr("[Double spend seen on the network: this transaction may or may not end up being mined] ");
         transfers.push_back({
-          "pool",
-          "pool",
+          tr("pool"),
           pd.m_timestamp,
-          "in",
+          tools::pay_type::in,
           false,
           pd.m_amount,
           pd.m_tx_hash,
@@ -9096,7 +9112,7 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
           {{destination, pd.m_amount}},
           {pd.m_subaddr_index.minor},
           note + double_spend_note,
-          "locked"
+          tr("locked")
         });
       }
     }
@@ -9114,10 +9130,16 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
       const tools::wallet2::unconfirmed_transfer_details &pd = i->second;
       uint64_t amount = pd.m_amount_in;
       uint64_t fee = amount - pd.m_amount_out;
-      std::vector<std::pair<std::string, uint64_t>> destinations;
-      for (const auto &d: pd.m_dests) {
-        destinations.push_back({d.address(m_wallet->nettype(), pd.m_payment_id), d.amount});
+
+      std::vector<transfer_view::dest_output> destinations(pd.m_dests.size());
+      for(size_t dest_index = 0; dest_index < pd.m_dests.size(); ++dest_index)
+      {
+        const tx_destination_entry &dest = pd.m_dests[dest_index];
+        transfer_view::dest_output &output = destinations[dest_index];
+        output.wallet_addr = get_account_address_as_str(m_wallet->nettype(), dest.is_subaddress, dest.addr);
+        output.amount = dest.amount;
       }
+
       std::string payment_id = string_tools::pod_to_hex(i->second.m_payment_id);
       if (payment_id.substr(16).find_first_not_of('0') == std::string::npos)
         payment_id = payment_id.substr(0,16);
@@ -9125,10 +9147,9 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
       bool is_failed = pd.m_state == tools::wallet2::unconfirmed_transfer_details::failed;
       if ((failed && is_failed) || (!is_failed && pending)) {
         transfers.push_back({
-          (is_failed ? "failed" : "pending"),
-          (is_failed ? "failed" : "pending"),
+          (is_failed ? tr("failed") : tr("pending")),
           pd.m_timestamp,
-          "out",
+          tools::pay_type::out,
           false,
           amount - pd.m_change - fee,
           i->first,
@@ -9136,8 +9157,7 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
           fee,
           destinations,
           pd.m_subaddr_indices,
-          note,
-          "-"
+          note
         });
       }
     }
@@ -9174,7 +9194,32 @@ bool simple_wallet::show_transfers(const std::vector<std::string> &args_)
 
   for (const auto& transfer : all_transfers)
   {
-    const auto color = transfer.type == "failed" ? console_color_red : transfer.confirmed ? ((transfer.direction == "in" || transfer.direction == "block") ? console_color_green : console_color_magenta) : console_color_default;
+    enum console_colors color = console_color_white;
+    if (transfer.confirmed)
+    {
+      switch(transfer.type)
+      {
+        case tools::pay_type::in:
+          color = console_color_green;
+          break;
+        case tools::pay_type::out:
+          color = console_color_yellow;
+          break;
+        case tools::pay_type::miner:
+        case tools::pay_type::service_node:
+          color = console_color_cyan;
+          break;
+        case tools::pay_type::stake:
+          color = console_color_blue;
+          break;
+        default:
+          color = console_color_magenta;
+          break;
+      }
+    }
+
+    if(!transfer.confirmed)
+      color = console_color_white;
 
     std::string destinations = "-";
     if (!transfer.outputs.empty())
@@ -9184,7 +9229,13 @@ bool simple_wallet::show_transfers(const std::vector<std::string> &args_)
       {
         if (!destinations.empty())
           destinations += ", ";
-        destinations += (transfer.direction == "in" ? output.first.substr(0, 6) : output.first) + ":" + print_money(output.second);
+
+        if(transfer.type == tools::pay_type::in || transfer.type == tools::pay_type::service_node || transfer.type == tools::pay_type::miner)
+          destinations += output.wallet_addr.substr(0,6);
+        else
+          destinations += output.wallet_addr;
+
+        destinations += ":" + print_money(output.amount);
       }
     }
 
@@ -9192,7 +9243,7 @@ bool simple_wallet::show_transfers(const std::vector<std::string> &args_)
 
     message_writer(color, false) << formatter
       % transfer.block
-      % transfer.direction
+      % tools::pay_type_string(transfer.type)
       % transfer.unlocked
       % tools::get_human_readable_timestamp(transfer.timestamp)
       % print_money(transfer.amount)
@@ -9237,7 +9288,7 @@ bool simple_wallet::export_transfers(const std::vector<std::string>& args_)
   // header
   file <<
       boost::format("%8.8s,%9.9s,%8.8s,%25.25s,%20.20s,%20.20s,%64.64s,%16.16s,%14.14s,%100.100s,%20.20s,%s,%s") %
-      tr("block") % tr("direction") % tr("unlocked") % tr("timestamp") % tr("amount") % tr("running balance") % tr("hash") % tr("payment ID") % tr("fee") % tr("destination") % tr("amount") % tr("index") % tr("note")
+      tr("block") % tr("type") % tr("unlocked") % tr("timestamp") % tr("amount") % tr("running balance") % tr("hash") % tr("payment ID") % tr("fee") % tr("destination") % tr("amount") % tr("index") % tr("note")
       << std::endl;
 
   uint64_t running_balance = 0;
@@ -9248,7 +9299,7 @@ bool simple_wallet::export_transfers(const std::vector<std::string>& args_)
     // ignore unconfirmed transfers in running balance
     if (transfer.confirmed)
     {
-      if (transfer.direction == "in" || transfer.direction == "block")
+      if (transfer.type == tools::pay_type::in)
         running_balance += transfer.amount;
       else
         running_balance -= transfer.amount + transfer.fee;
@@ -9256,7 +9307,7 @@ bool simple_wallet::export_transfers(const std::vector<std::string>& args_)
 
     file << formatter
       % transfer.block
-      % transfer.direction
+      % tools::pay_type_string(transfer.type)
       % transfer.unlocked
       % tools::get_human_readable_timestamp(transfer.timestamp)
       % print_money(transfer.amount)
@@ -9264,8 +9315,8 @@ bool simple_wallet::export_transfers(const std::vector<std::string>& args_)
       % string_tools::pod_to_hex(transfer.hash)
       % transfer.payment_id
       % print_money(transfer.fee)
-      % (transfer.outputs.size() ? transfer.outputs[0].first : "-")
-      % (transfer.outputs.size() ? print_money(transfer.outputs[0].second) : "")
+      % (transfer.outputs.size() ? transfer.outputs[0].wallet_addr : "-")
+      % (transfer.outputs.size() ? print_money(transfer.outputs[0].amount) : "")
       % boost::algorithm::join(transfer.index | boost::adaptors::transformed([](uint32_t i) { return std::to_string(i); }), ", ")
       % transfer.note
       << std::endl;
@@ -9282,8 +9333,8 @@ bool simple_wallet::export_transfers(const std::vector<std::string>& args_)
         % ""
         % ""
         % ""
-        % transfer.outputs[i].first
-        % print_money(transfer.outputs[i].second)
+        % transfer.outputs[i].wallet_addr
+        % print_money(transfer.outputs[i].amount)
         % ""
         % ""
         << std::endl;
