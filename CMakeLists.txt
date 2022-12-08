@@ -477,11 +477,12 @@ if(POLICY CMP0079)
 endif()
 
 add_library(miniupnpc INTERFACE)
+add_library(libunbound INTERFACE)
 
 add_subdirectory(external)
 
 # Final setup for libunbound
-include_directories(${UNBOUND_INCLUDE_DIR})
+include_directories(${UNBOUND_INCLUDE})
 
 # Final setup for easylogging++
 include_directories(${EASYLOGGING_INCLUDE})
@@ -820,7 +821,7 @@ else()
   endif()
   set(USE_LTO ${USE_LTO_DEFAULT} CACHE BOOL "Use Link-Time Optimization (Release mode only)")
 
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # There is a clang bug that does not allow to compile code that uses AES-NI intrinsics if -flto is enabled, so explicitly disable
     set(USE_LTO false)
   endif()
@@ -874,7 +875,9 @@ if(${BOOST_IGNORE_SYSTEM_PATHS} STREQUAL "ON")
 endif()
 
 set(OLD_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-#set(Boost_NO_BOOST_CMAKE ON)
+if(APPLE)
+  set(Boost_NO_BOOST_CMAKE ON)
+endif()
 
 if(STATIC)
   if(MINGW)
