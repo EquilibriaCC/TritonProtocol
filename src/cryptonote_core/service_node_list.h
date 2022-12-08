@@ -170,8 +170,8 @@ namespace service_nodes
 		void blockchain_detached(uint64_t height) override;
 		void init() override;
 		bool validate_miner_tx(const crypto::hash& prev_id, const cryptonote::transaction& miner_tx, uint64_t height, uint8_t hard_fork_version, cryptonote::block_reward_parts const &reward_parts) const override;
-		std::vector<std::pair<cryptonote::account_public_address, uint64_t>> get_winner_addresses_and_portions() const;
-		crypto::public_key select_winner() const;
+		std::vector<std::pair<cryptonote::account_public_address, uint64_t>> get_winner_addresses_and_portions(const crypto::hash& prev_id, const uint64_t height) const;
+		crypto::public_key select_winner(const crypto::hash& prev_id) const;
 
 		std::vector<crypto::public_key> get_service_nodes_pubkeys() const;
 		bool is_service_node(const crypto::public_key& pubkey) const;

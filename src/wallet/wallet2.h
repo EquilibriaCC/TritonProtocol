@@ -385,11 +385,9 @@ private:
       uint64_t m_unlock_time;
       uint64_t m_timestamp;
 	    pay_type m_type;
-      bool m_coinbase;
-
       cryptonote::subaddress_index m_subaddr_index;
 
-	  bool is_coinbase() const { return ((m_type == pay_type::miner) || (m_type == pay_type::service_node)); }
+      bool is_coinbase() const { return ((m_type == pay_type::miner) || (m_type == pay_type::service_node)); }
 
     };
 
@@ -1975,9 +1973,10 @@ namespace boost
       a & x.m_fee;
       if (ver < 4)
       {
-		  x.m_type = tools::pay_type::unspecified;
+        x.m_type = tools::pay_type::unspecified;
         return;
       }
+      a & x.m_type;
       if (ver < 5)
         return;
       a & x.m_amounts;
