@@ -6348,12 +6348,6 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
       return false;
     }
 
-    if (transferType == txType::Burn) {
-      add_burned_amount_to_tx_extra(extra, de.amount);
-      burn_amount += de.amount;
-      de.amount = 10;
-    }
-
     
     if (transferType == txType::Swap) 
     {
@@ -6806,8 +6800,6 @@ bool simple_wallet::register_service_node_main(
 		return true;
 	}
 
-  add_burned_amount_to_tx_extra(extra, (amount_payable_by_operator / 1000));
-
 	vector<cryptonote::tx_destination_entry> dsts;
 	cryptonote::tx_destination_entry de;
 	de.addr = address;
@@ -7220,8 +7212,6 @@ bool simple_wallet::stake_main(
   add_service_node_pubkey_to_tx_extra(extra, service_node_key);
 
   add_service_node_contributor_to_tx_extra(extra, parse_info.address);
-
-  add_burned_amount_to_tx_extra(extra, (amount / 1000));
 
   vector<cryptonote::tx_destination_entry> dsts;
   cryptonote::tx_destination_entry de;
@@ -8975,7 +8965,7 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
     local_args.erase(local_args.begin());
   }
 
-  const uint64_t last_block_height = m_wallet->get_blockchain_current_height();
+  const uint64_t lbh = m_wallet->get_blockchain_current_height();
 
   if (in || coinbase) {
     std::list<std::pair<crypto::hash, tools::wallet2::payment_details>> payments;
@@ -8988,26 +8978,30 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
       if (payment_id.substr(16).find_first_not_of('0') == std::string::npos)
         payment_id = payment_id.substr(0,16);
       std::string note = m_wallet->get_tx_note(pd.m_tx_hash);
+
       std::string destination = m_wallet->get_subaddress_as_str({m_current_subaddress_account, pd.m_subaddr_index.minor});
+
       const bool unlocked = m_wallet->is_transfer_unlocked(pd.m_unlock_time, pd.m_block_height);
       std::string locked_msg = "unlocked";
-      if (!unlocked)
+      if(!unlocked)
       {
         locked_msg = "locked";
-        if (pd.m_unlock_time < CRYPTONOTE_MAX_BLOCK_NUMBER)
+        const uint64_t unlock_time = pd.m_unlock_time;
+        if(pd.m_unlock_time < CRYPTONOTE_MAX_BLOCK_NUMBER)
         {
           uint64_t bh = std::max(pd.m_unlock_time, pd.m_block_height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE);
-          if (bh >= last_block_height)
-            locked_msg = std::to_string(bh - last_block_height) + " blks";
+          if(bh >= lbh)
+            locked_msg = std::to_string(bh - lbh) + " blocks";
         }
         else
         {
           uint64_t current_time = static_cast<uint64_t>(time(NULL));
-          uint64_t threshold = current_time + (m_wallet->use_fork_rules(2, 0) ? CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V2 : CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V1);
-          if (threshold < pd.m_unlock_time)
+          uint64_t threshold = current_time + CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V2;
+          if(threshold < pd.m_unlock_time)
             locked_msg = get_human_readable_timespan(std::chrono::seconds(pd.m_unlock_time - threshold));
         }
       }
+
       transfers.push_back({
         pd.m_block_height,
         pd.m_timestamp,
@@ -9020,7 +9014,7 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
         {{destination, pd.m_amount, pd.m_unlock_time}},
         {pd.m_subaddr_index.minor},
         note,
-        locked_msg
+        locked_msg,
       });
     }
   }
@@ -9034,27 +9028,42 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
       uint64_t fee = pd.m_amount_in - pd.m_amount_out;
 
       std::vector<transfer_view::dest_output> destinations(pd.m_dests.size());
-      for(size_t dest_index = 0; dest_index < pd.m_dests.size(); ++dest_index)
+      for (size_t dest_index  = 0; dest_index < pd.m_dests.size(); ++dest_index)
       {
-        const tx_destination_entry &dest = pd.m_dests[dest_index];
+        const tx_destination_entry &dest   = pd.m_dests[dest_index];
         transfer_view::dest_output &output = destinations[dest_index];
-        output.wallet_addr = get_account_address_as_str(m_wallet->nettype(), dest.is_subaddress, dest.addr);
-        output.amount = dest.amount;
-        output.unlock_time = (dest_index < pd.m_unlock_times.size()) ? pd.m_unlock_times[dest_index] : 0;
+        output.wallet_addr                 = get_account_address_as_str(m_wallet->nettype(), dest.is_subaddress, dest.addr);
+        output.amount                      = dest.amount;
+        output.unlock_time                 = (dest_index < pd.m_unlock_times.size()) ? pd.m_unlock_times[dest_index] : 0;
       }
 
-      const uint64_t staking_duration = service_nodes::get_staking_requirement_lock_blocks(m_wallet->nettype());
-
       tools::pay_type type = tools::pay_type::out;
-      for(size_t unlock_index = 0; unlock_index < pd.m_unlock_times.size() && type != tools::pay_type::stake; ++unlock_index)
+      std::string locked_msg = "unlocked";
+      for (size_t unlock_index = 0; unlock_index < pd.m_unlock_times.size() && type != tools::pay_type::stake; ++unlock_index)
       {
         uint64_t unlock_time = pd.m_unlock_times[unlock_index];
-        if(unlock_time < pd.m_block_height)
+        if (unlock_time < pd.m_block_height)
           continue;
 
-        uint64_t lock_duration = unlock_time - pd.m_block_height;
-        if(lock_duration >= staking_duration)
+        const bool unlocked = m_wallet->is_transfer_unlocked(unlock_time, pd.m_block_height);
+        if (!unlocked)
+        {
           type = tools::pay_type::stake;
+          locked_msg = "locked";
+          if(unlock_time < CRYPTONOTE_MAX_BLOCK_NUMBER)
+          {
+            uint64_t bh = std::max(unlock_time, pd.m_block_height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE);
+            if(bh >= lbh)
+              locked_msg = std::to_string(bh - lbh) + " blocks";
+          }
+          else
+          {
+            uint64_t current_time = static_cast<uint64_t>(time(NULL));
+            uint64_t threshold = current_time + CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V2;
+            if(threshold < unlock_time)
+              locked_msg = get_human_readable_timespan(std::chrono::seconds(unlock_time - threshold));
+          }
+        }
       }
 
       std::string payment_id = string_tools::pod_to_hex(i->second.m_payment_id);
@@ -9072,7 +9081,8 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
         fee,
         destinations,
         pd.m_subaddr_indices,
-        note
+        note,
+        locked_msg
       });
     }
   }
@@ -9101,7 +9111,7 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
         if (i->second.m_double_spend_seen)
           double_spend_note = tr("[Double spend seen on the network: this transaction may or may not end up being mined] ");
         transfers.push_back({
-          tr("pool"),
+          "pool",
           pd.m_timestamp,
           tools::pay_type::in,
           false,
@@ -9132,12 +9142,12 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
       uint64_t fee = amount - pd.m_amount_out;
 
       std::vector<transfer_view::dest_output> destinations(pd.m_dests.size());
-      for(size_t dest_index = 0; dest_index < pd.m_dests.size(); ++dest_index)
+      for (size_t dest_index  = 0; dest_index < pd.m_dests.size(); ++dest_index)
       {
-        const tx_destination_entry &dest = pd.m_dests[dest_index];
+        const tx_destination_entry &dest   = pd.m_dests[dest_index];
         transfer_view::dest_output &output = destinations[dest_index];
-        output.wallet_addr = get_account_address_as_str(m_wallet->nettype(), dest.is_subaddress, dest.addr);
-        output.amount = dest.amount;
+        output.wallet_addr                 = get_account_address_as_str(m_wallet->nettype(), dest.is_subaddress, dest.addr);
+        output.amount                      = dest.amount;
       }
 
       std::string payment_id = string_tools::pod_to_hex(i->second.m_payment_id);
@@ -9147,7 +9157,7 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
       bool is_failed = pd.m_state == tools::wallet2::unconfirmed_transfer_details::failed;
       if ((failed && is_failed) || (!is_failed && pending)) {
         transfers.push_back({
-          (is_failed ? tr("failed") : tr("pending")),
+          (is_failed ? "failed" : "pending"),
           pd.m_timestamp,
           tools::pay_type::out,
           false,
@@ -9157,7 +9167,8 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
           fee,
           destinations,
           pd.m_subaddr_indices,
-          note
+          note,
+          "locked"
         });
       }
     }
@@ -9195,7 +9206,7 @@ bool simple_wallet::show_transfers(const std::vector<std::string> &args_)
   for (const auto& transfer : all_transfers)
   {
     enum console_colors color = console_color_white;
-    if (transfer.confirmed)
+    if(transfer.confirmed)
     {
       switch(transfer.type)
       {
@@ -9218,9 +9229,12 @@ bool simple_wallet::show_transfers(const std::vector<std::string> &args_)
       }
     }
 
-    if(!transfer.confirmed)
-      color = console_color_white;
-
+    if(transfer.block.type() == typeid(std::string))
+    {
+      const std::string& block_str = boost::get<std::string>(transfer.block);
+      if(block_str == "failed")
+        color = console_color_red;
+    }
     std::string destinations = "-";
     if (!transfer.outputs.empty())
     {
@@ -9239,12 +9253,12 @@ bool simple_wallet::show_transfers(const std::vector<std::string> &args_)
       }
     }
 
-    auto formatter = boost::format("%8.8llu %6.6s %8.8s %25.25s %20.20s %s %s %14.14s %s %s - %s");
+    auto formatter = boost::format("%8.8llu %6.6s %12.12s %25.25s %20.20s %s %s %14.14s %s %s - %s");
 
     message_writer(color, false) << formatter
       % transfer.block
       % tools::pay_type_string(transfer.type)
-      % transfer.unlocked
+      % transfer.lock_msg
       % tools::get_human_readable_timestamp(transfer.timestamp)
       % print_money(transfer.amount)
       % string_tools::pod_to_hex(transfer.hash)
@@ -9297,18 +9311,31 @@ bool simple_wallet::export_transfers(const std::vector<std::string>& args_)
   for (const auto& transfer : all_transfers)
   {
     // ignore unconfirmed transfers in running balance
-    if (transfer.confirmed)
+    if(transfer.confirmed)
     {
-      if (transfer.type == tools::pay_type::in)
-        running_balance += transfer.amount;
-      else
-        running_balance -= transfer.amount + transfer.fee;
+      switch(transfer.type)
+      {
+        case tools::pay_type::in:
+        case tools::pay_type::miner:
+        case tools::pay_type::service_node:
+          running_balance += transfer.amount;
+          break;
+        case tools::pay_type::stake:
+          running_balance -= transfer.fee;
+          break;
+        case tools::pay_type::out:
+          running_balance -= transfer.amount + transfer.fee;
+          break;
+        default:
+          fail_msg_writer() << tr("Warning: Unhandled pay type, this is most likely a developer error.");
+          break;
+      }
     }
 
     file << formatter
       % transfer.block
       % tools::pay_type_string(transfer.type)
-      % transfer.unlocked
+      % transfer.lock_msg
       % tools::get_human_readable_timestamp(transfer.timestamp)
       % print_money(transfer.amount)
       % print_money(running_balance)
@@ -10667,7 +10694,7 @@ bool simple_wallet::show_transfer(const std::vector<std::string> &args)
       else
       {
         uint64_t current_time = static_cast<uint64_t>(time(NULL));
-        uint64_t threshold = current_time + (m_wallet->use_fork_rules(2, 0) ? CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V2 : CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V1);
+        uint64_t threshold = current_time + CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V2;
         if (threshold >= pd.m_unlock_time)
           success_msg_writer() << "unlocked for " << get_human_readable_timespan(std::chrono::seconds(threshold - pd.m_unlock_time));
         else
