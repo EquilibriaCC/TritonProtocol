@@ -56,7 +56,7 @@ namespace cryptonote
 	};
   //---------------------------------------------------------------
   bool construct_miner_tx(
-        size_t height,
+        uint64_t height,
         size_t median_size,
         uint64_t already_generated_coins,
         size_t current_block_size,
