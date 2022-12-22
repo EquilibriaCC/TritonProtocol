@@ -32,7 +32,6 @@ set(crypto_sources
   crypto-ops.c
   crypto.cpp
   hash.c
-  hmac-keccak.c
   keccak.c
   tree-hash.c
   groestl.c
@@ -78,7 +77,6 @@ set(crypto_private_headers
   hash-ops.h
   hash.h
   jh.h
-  hmac-keccak.h
   initializer.h
   keccak.h
   skein_port.h

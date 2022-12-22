@@ -634,6 +634,7 @@ block Blockchain::pop_block_from_blockchain()
 
   m_blocks_longhash_table.clear();
   m_scan_table.clear();
+  m_blocks_txs_check.clear();
 
   CHECK_AND_ASSERT_THROW_MES(update_next_cumulative_weight_limit(), "Error updating next cumulative weight limit");
   uint64_t top_block_height;
@@ -1625,8 +1626,8 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
   uint8_t hf_version = m_hardfork->get_current_version();
 
   miner_tx_context miner_context(m_nettype,
-  m_service_node_list.select_winner(),
-  m_service_node_list.get_winner_addresses_and_portions());
+  m_service_node_list.select_winner(b.prev_id),
+  m_service_node_list.get_winner_addresses_and_portions(b.prev_id, height));
 
   bool r = construct_miner_tx(height, median_weight, already_generated_coins, txs_weight, fee, miner_address, b.miner_tx, ex_nonce, hf_version, miner_context);
 

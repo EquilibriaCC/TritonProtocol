@@ -219,9 +219,7 @@ if(NOT MANUAL_SUBMODULES)
 
     message(STATUS "Checking submodules")
     check_submodule(external/miniupnp)
-    check_submodule(external/unbound)
     check_submodule(external/rapidjson)
-    check_submodule(external/trezor-common)
   endif()
 endif()
 
@@ -254,18 +252,6 @@ endif()
 
 message(STATUS "BOOST_IGNORE_SYSTEM_PATHS defaults to ${BOOST_IGNORE_SYSTEM_PATHS_DEFAULT}")
 option(BOOST_IGNORE_SYSTEM_PATHS "Ignore boost system paths for local boost installation" ${BOOST_IGNORE_SYSTEM_PATHS_DEFAULT})
-
-
-if (NOT DEFINED ENV{DEVELOPER_LIBUNBOUND_OLD})
-  message(STATUS "Could not find DEVELOPER_LIBUNBOUND_OLD in env (not required)")
-elseif ("$ENV{DEVELOPER_LIBUNBOUND_OLD}" EQUAL 1)
-  message(STATUS "Found: env DEVELOPER_LIBUNBOUND_OLD = 1, will use the work around")
-  add_definitions(-DDEVELOPER_LIBUNBOUND_OLD)
-elseif ("$ENV{DEVELOPER_LIBUNBOUND_OLD}" EQUAL 0)
-  message(STATUS "Found: env DEVELOPER_LIBUNBOUND_OLD = 0")
-else()
-  message(STATUS "Found: env DEVELOPER_LIBUNBOUND_OLD with bad value. Will NOT use the work around")
-endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 enable_testing()
@@ -490,8 +476,8 @@ if(POLICY CMP0079)
   cmake_policy(SET CMP0079 NEW)
 endif()
 
-add_library(libunbound INTERFACE)
 add_library(miniupnpc INTERFACE)
+add_library(libunbound INTERFACE)
 
 add_subdirectory(external)
 
@@ -518,9 +504,6 @@ if (HIDAPI_FOUND)
 else (HIDAPI_FOUND)
   message(STATUS "Could not find HIDAPI")
 endif()
-
-# Trezor support check
-include(CheckTrezor)
 
 if(MSVC)
   add_definitions("/bigobj /MP /W3 /GS- /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /FIinline_c.h /D__SSE4_1__")
@@ -838,7 +821,7 @@ else()
   endif()
   set(USE_LTO ${USE_LTO_DEFAULT} CACHE BOOL "Use Link-Time Optimization (Release mode only)")
 
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # There is a clang bug that does not allow to compile code that uses AES-NI intrinsics if -flto is enabled, so explicitly disable
     set(USE_LTO false)
   endif()
@@ -914,18 +897,21 @@ if(DEPENDS)
 endif()
 
 if(WIN32)
-  set(BOOST_LIBRARIES system filesystem thread date_time chrono regex serialization program_options locale)
+  set(Boost_LIBRARIES system filesystem thread date_time chrono regex serialization program_options locale)
 else()
-  set(BOOST_LIBRARIES system filesystem thread date_time chrono regex serialization program_options)
+  set(Boost_LIBRARIES system filesystem thread date_time chrono regex serialization program_options)
 endif()
 
-find_package(Boost 1.62.0 QUIET REQUIRED COMPONENTS ${BOOST_LIBRARIES})
-include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+find_package(Boost 1.62.0 QUIET REQUIRED COMPONENTS ${Boost_LIBRARIES})
+include_directories(${Boost_INCLUDE_DIRS})
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ${OLD_LIB_SUFFIXES})
 if(NOT Boost_FOUND)
   die("Could not find Boost libraries, please make sure you have installed Boost or libboost-all-dev >=1.62 or the equivalent")
 elseif(Boost_FOUND)
+  message(STATUS "Found Boost Version: ${Boost_VERSION_STRING}")
+  message(STATUS "Boost Includes Dir is: ${Boost_INCLUDE_DIRS}")
+  message(STATUS "Boost Libraries Dir is: ${Boost_LIBRARY_DIRS}")
   if(Boost_VERSION VERSION_LESS 1.62.0 AND NOT (OPENSSL_VERSION VERSION_LESS 1.1))
     set(BOOST_BEFORE_1_62 true)
   endif()
@@ -1015,7 +1001,6 @@ find_library(ZMQ_LIB zmq)
 find_library(PGM_LIBRARY pgm)
 find_library(NORM_LIBRARY norm)
 find_library(GSSAPI_LIBRARY gssapi_krb5)
-find_library(PROTOLIB_LIBRARY protolib)
 find_library(SODIUM_LIBRARY sodium)
 
 if(NOT ZMQ_INCLUDE_PATH)
@@ -1032,9 +1017,6 @@ if(NORM_LIBRARY)
 endif()
 if(GSSAPI_LIBRARY)
   set(ZMQ_LIB "${ZMQ_LIB};${GSSAPI_LIBRARY}")
-endif()
-if(PROTOLIB_LIBRARY)
-  set(ZMQ_LIB "${ZMQ_LIB};${PROTOLIB_LIBRARY}")
 endif()
 if(SODIUM_LIBRARY)
   set(ZMQ_LIB "${ZMQ_LIB};${SODIUM_LIBRARY}")
@@ -1081,12 +1063,6 @@ endif()
 
 # when ON - will install libwallet_merged into "lib"
 option(BUILD_GUI_DEPS "Build GUI dependencies." OFF)
-
-# This is not nice, distribution packagers should not enable this, but depend
-# on libunbound shipped with their distribution instead
-option(INSTALL_VENDORED_LIBUNBOUND "Install libunbound binary built from source vendored with this repo." OFF)
-
-CHECK_C_COMPILER_FLAG(-std=c11 HAVE_C11)
 
 find_package(PythonInterp)
 find_program(iwyu_tool_path NAMES iwyu_tool.py iwyu_tool)

@@ -66,19 +66,19 @@ namespace hw {
         const std::string device_default::get_name()  const {
             return this->name;
         }
-        
+
         bool device_default::init(void) {
-            return true;
+            dfns();
         }
         bool device_default::release() {
-            return true;
+            dfns();
         }
 
         bool device_default::connect(void) {
-            return true;
+            dfns();
         }
         bool device_default::disconnect() {
-            return true;
+            dfns();
         }
 
         bool  device_default::set_mode(device_mode mode) {

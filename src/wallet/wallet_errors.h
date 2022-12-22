@@ -223,14 +223,6 @@ namespace tools
       }
     };
     //----------------------------------------------------------------------------------------------------
-    struct password_entry_failed : public wallet_runtime_error
-    {
-      explicit password_entry_failed(std::string&& loc, const std::string &msg = "Password entry failed")
-        : wallet_runtime_error(std::move(loc), msg)
-      {
-      }
-    };
-    //----------------------------------------------------------------------------------------------------
     const char* const file_error_messages[] = {
       "file already exists",
       "file not found",
@@ -458,24 +450,28 @@ namespace tools
         : transfer_error(std::move(loc), "not enough unlocked money")
         , m_available(available)
         , m_tx_amount(tx_amount)
+        , m_fee(fee)
       {
       }
 
       uint64_t available() const { return m_available; }
       uint64_t tx_amount() const { return m_tx_amount; }
+      uint64_t fee() const { return m_fee; }
 
       std::string to_string() const
       {
         std::ostringstream ss;
         ss << transfer_error::to_string() <<
           ", available = " << cryptonote::print_money(m_available) <<
-          ", tx_amount = " << cryptonote::print_money(m_tx_amount);
+          ", tx_amount = " << cryptonote::print_money(m_tx_amount) <<
+          ", fee = " << cryptonote::print_money(m_fee);
         return ss.str();
       }
 
     private:
       uint64_t m_available;
       uint64_t m_tx_amount;
+      uint64_t m_fee;
     };
     //----------------------------------------------------------------------------------------------------
     struct not_enough_money : public transfer_error
@@ -484,24 +480,28 @@ namespace tools
         : transfer_error(std::move(loc), "not enough money")
         , m_available(available)
         , m_tx_amount(tx_amount)
+        , m_fee(fee)
       {
       }
 
       uint64_t available() const { return m_available; }
       uint64_t tx_amount() const { return m_tx_amount; }
+      uint64_t fee() const { return m_fee; }
 
       std::string to_string() const
       {
         std::ostringstream ss;
         ss << transfer_error::to_string() <<
           ", available = " << cryptonote::print_money(m_available) <<
-          ", tx_amount = " << cryptonote::print_money(m_tx_amount);
+          ", tx_amount = " << cryptonote::print_money(m_tx_amount) <<
+          ", fee = " << cryptonote::print_money(m_fee);
         return ss.str();
       }
 
     private:
       uint64_t m_available;
       uint64_t m_tx_amount;
+      uint64_t m_fee;
     };
     //----------------------------------------------------------------------------------------------------
     struct tx_not_possible : public transfer_error
