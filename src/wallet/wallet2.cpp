@@ -46,7 +46,6 @@ using namespace epee;
 
 #include "common/rules.h"
 #include "cryptonote_config.h"
-#include "cryptonote_core/tx_sanity_check.h"
 #include "wallet_rpc_helpers.h"
 #include "wallet2.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
@@ -1729,7 +1728,7 @@ static uint64_t decodeRct(const rct::rctSig & rv, const crypto::key_derivation &
   }
 }
 //----------------------------------------------------------------------------------------------------
-void wallet2::scan_output(const cryptonote::transaction &tx, bool miner_tx, const crypto::public_key &tx_pub_key, size_t vout_index, tx_scan_info_t &tx_scan_info, std::vector<tx_money_got_in_out> &tx_money_got_in_outs, std::vector<size_t> &outs, bool pool)
+void wallet2::scan_output(const cryptonote::transaction &tx, bool miner_tx, const crypto::public_key &tx_pub_key, size_t vout_index, tx_scan_info_t &tx_scan_info, int &num_vouts_received, std::vector<tx_money_got_in_out> &tx_money_got_in_outs, std::vector<size_t> &outs, bool pool)
 {
   THROW_WALLET_EXCEPTION_IF(vout_index >= tx.vout.size(), error::wallet_internal_error, "Invalid vout index");
 
@@ -1763,17 +1762,12 @@ void wallet2::scan_output(const cryptonote::transaction &tx, bool miner_tx, cons
   }
   THROW_WALLET_EXCEPTION_IF(std::find(outs.begin(), outs.end(), vout_index) != outs.end(), error::wallet_internal_error, "Same output cannot be added twice");
 
-  THROW_WALLET_EXCEPTION_IF(std::find(outs.begin(), outs.end(), vout_index) != outs.end(), error::wallet_internal_error, "Same output cannot be added twice");
-  if (tx_scan_info.money_transfered == 0 && !miner_tx)
-  {
-    tx_scan_info.money_transfered = tools::decodeRct(tx.rct_signatures, tx_scan_info.received->derivation, vout_index, tx_scan_info.mask, m_account.get_device());
-  }
+  outs.push_back(vout_index);
   if (tx_scan_info.money_transfered == 0)
   {
     tx_scan_info.money_transfered = tools::decodeRct(tx.rct_signatures, tx_scan_info.received->derivation, vout_index, tx_scan_info.mask, m_account.get_device());
   }
-  
-  outs.push_back(vout_index);
+
 	uint64_t unlock_time = tx.get_unlock_time(vout_index);
 
 	tx_money_got_in_out entry = {};
@@ -1784,13 +1778,16 @@ void wallet2::scan_output(const cryptonote::transaction &tx, bool miner_tx, cons
 
 	if (cryptonote::is_coinbase(tx))
 	{
-		if (vout_index == 0)                       entry.type = pay_type::miner;
-		else                                       entry.type = pay_type::service_node;
+		if (vout_index == 0)
+		  entry.type = pay_type::miner;
+		else
+		  entry.type = pay_type::service_node;
 	}
 
   tx_money_got_in_outs.push_back(entry);
 	tx_scan_info.amount = tx_scan_info.money_transfered;
 	tx_scan_info.unlock_time = unlock_time;
+  ++num_vouts_received;
 }
 //----------------------------------------------------------------------------------------------------
 void wallet2::cache_tx_data(const cryptonote::transaction& tx, const crypto::hash &txid, tx_cache_data &tx_cache_data) const
@@ -1872,16 +1869,13 @@ void wallet2::process_new_transaction(const crypto::hash &txid, const cryptonote
 
   // Don't try to extract tx public key if tx has no ouputs
   size_t pk_index = 0;
+  std::unordered_map<crypto::public_key, uint64_t> pk_to_unlock_times;
   std::vector<tx_scan_info_t> tx_scan_info(tx.vout.size());
   std::deque<bool> output_found(tx.vout.size(), false);
   uint64_t total_received_1 = 0;
-
-  using unlock_time_t = uint64_t;
-  std::unordered_map<crypto::public_key, unlock_time_t> pk_to_unlock_times;
-  std::vector<size_t> outs;
   while (!tx.vout.empty())
   {
-    outs.clear();
+    std::vector<size_t> outs;
     // if tx.vout is not empty, we loop through all tx pubkeys
 
     tx_extra_pub_key pub_key_field;
@@ -1900,6 +1894,7 @@ void wallet2::process_new_transaction(const crypto::hash &txid, const cryptonote
           error::wallet_internal_error, "tx_cache_data is out of sync");
     }
 
+    int num_vouts_received = 0;
     tx_pub_key = pub_key_field.pub_key;
     tools::threadpool& tpool = tools::threadpool::getInstance();
     tools::threadpool::waiter waiter;
@@ -1982,7 +1977,7 @@ void wallet2::process_new_transaction(const crypto::hash &txid, const cryptonote
         if (tx_scan_info[i].received)
         {
           hwdev.conceal_derivation(tx_scan_info[i].received->derivation, tx_pub_key, additional_tx_pub_keys.data, derivation, additional_derivations);
-          scan_output(tx, miner_tx, tx_pub_key, i, tx_scan_info[i], tx_money_got_in_outs, outs, pool);
+          scan_output(tx, miner_tx, tx_pub_key, i, tx_scan_info[i], num_vouts_received, tx_money_got_in_outs, outs, pool);
           if (!tx_scan_info[i].error)
           {
             tx_amounts_individual_outs[tx_scan_info[i].received->index].push_back(tx_scan_info[i].money_transfered);
@@ -2002,7 +1997,7 @@ void wallet2::process_new_transaction(const crypto::hash &txid, const cryptonote
           boost::unique_lock<hw::device> hwdev_lock (hwdev);
           hwdev.set_mode(hw::device::NONE);
           hwdev.conceal_derivation(tx_scan_info[i].received->derivation, tx_pub_key, additional_tx_pub_keys.data, derivation, additional_derivations);
-          scan_output(tx, miner_tx, tx_pub_key, i, tx_scan_info[i], tx_money_got_in_outs, outs, pool);
+          scan_output(tx, miner_tx, tx_pub_key, i, tx_scan_info[i], num_vouts_received, tx_money_got_in_outs, outs, pool);
           if (!tx_scan_info[i].error)
           {
             tx_amounts_individual_outs[tx_scan_info[i].received->index].push_back(tx_scan_info[i].money_transfered);
@@ -2011,7 +2006,7 @@ void wallet2::process_new_transaction(const crypto::hash &txid, const cryptonote
       }
     }
 
-    if(!outs.empty())
+    if(!outs.empty() && num_vouts_received > 0)
     {
       //good news - got money! take care about it
       //usually we have only one transfer for user in transaction
@@ -2039,7 +2034,7 @@ void wallet2::process_new_transaction(const crypto::hash &txid, const cryptonote
           {
             pk_to_unlock_times[tx_scan_info[o].in_ephemeral.pub] = tx_scan_info[o].unlock_time;
 
-            m_transfers.emplace_back();
+            m_transfers.push_back(transfer_details{});
             transfer_details& td = m_transfers.back();
             td.m_block_height = height;
             td.m_internal_output_index = o;
@@ -2509,7 +2504,6 @@ void wallet2::process_outgoing(const crypto::hash &txid, const cryptonote::trans
   entry.first->second.m_block_height = height;
   entry.first->second.m_timestamp = ts;
   entry.first->second.m_unlock_time = tx.unlock_time;
-  entry.first->second.m_unlock_times = tx.output_unlock_times;
 
   add_rings(tx);
 }
@@ -7789,6 +7783,7 @@ std::vector<wallet2::pending_tx> wallet2::create_stake_tx(const crypto::public_k
   std::vector<uint8_t> extra;
   add_service_node_pubkey_to_tx_extra(extra, service_node_key);
   add_service_node_contributor_to_tx_extra(extra, address);
+  add_burned_amount_to_tx_extra(extra, amount / 1000);
   vector<cryptonote::tx_destination_entry> dsts;
   cryptonote::tx_destination_entry de;
   de.addr = address;
@@ -7994,49 +7989,7 @@ void wallet2::light_wallet_get_outs(std::vector<std::vector<tools::wallet2::get_
   }
 }
 
-std::pair<std::set<uint64_t>, size_t> outs_unique(const std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs)
-{
-  std::set<uint64_t> unique;
-  size_t total = 0;
-
-  for (const auto &it : outs)
-  {
-    for (const auto &out : it)
-    {
-      const uint64_t global_index = std::get<0>(out);
-      unique.insert(global_index);
-    }
-    total += it.size();
-  }
-
-  return std::make_pair(std::move(unique), total);
-}
-
-void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, const std::vector<size_t> &selected_transfers, size_t fake_outputs_count)
-{
-  std::vector<uint64_t> rct_offsets;
-  for (size_t attempts = 3; attempts > 0; --attempts)
-  {
-    get_outs(outs, selected_transfers, fake_outputs_count, rct_offsets);
-
-    const auto unique = outs_unique(outs);
-    if (tx_sanity_check(unique.first, unique.second, rct_offsets.empty() ? 0 : rct_offsets.back()))
-    {
-      return;
-    }
-
-    std::vector<crypto::key_image> key_images;
-    key_images.reserve(selected_transfers.size());
-    std::for_each(selected_transfers.begin(), selected_transfers.end(), [this, &key_images](size_t index) {
-      key_images.push_back(m_transfers[index].m_key_image);
-    });
-    unset_ring(key_images);
-  }
-
-  THROW_WALLET_EXCEPTION(error::wallet_internal_error, tr("Transaction sanity check failed"));
-}
-
-void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, const std::vector<size_t> &selected_transfers, size_t fake_outputs_count, std::vector<uint64_t> &rct_offsets)
+void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs, const std::vector<size_t> &selected_transfers, size_t fake_outputs_count, bool has_rct)
 {
   LOG_PRINT_L2("fake_outputs_count: " << fake_outputs_count);
   outs.clear();
@@ -8058,33 +8011,34 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
 
     // if we have at least one rct out, get the distribution, or fall back to the previous system
     uint64_t rct_start_height;
-    bool has_rct = false;
-    uint64_t max_rct_index = 0;
-    for (size_t idx : selected_transfers)
-      if (m_transfers[idx].is_rct())
-      {
-        has_rct = true;
-        max_rct_index = std::max(max_rct_index, m_transfers[idx].m_global_output_index);
-      }
-
-    if (has_rct && rct_offsets.empty()) {
-      THROW_WALLET_EXCEPTION_IF(!get_rct_distribution(rct_start_height, rct_offsets),
-          error::get_output_distribution, "Could not obtain output distribution.");
-    }
-
-    if (has_rct)
-    {
-      THROW_WALLET_EXCEPTION_IF(rct_offsets.size() <= CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE, error::get_output_distribution, "Not enough rct outputs");
-      THROW_WALLET_EXCEPTION_IF(rct_offsets.back() <= max_rct_index, error::get_output_distribution, "Daemon reports suspicious number of rct outputs");
-    }
+    std::vector<uint64_t> rct_offsets;
+    const bool has_rct_distribution = has_rct && get_rct_distribution(rct_start_height, rct_offsets);
 
     // get histogram for the amounts we need
     cryptonote::COMMAND_RPC_GET_OUTPUT_HISTOGRAM::request req_t = AUTO_VAL_INIT(req_t);
     cryptonote::COMMAND_RPC_GET_OUTPUT_HISTOGRAM::response resp_t = AUTO_VAL_INIT(resp_t);
-    // request histogram for all pre-rct outputs
-    for(size_t idx: selected_transfers)
-      if (!m_transfers[idx].is_rct())
-        req_t.amounts.push_back(m_transfers[idx].amount());
+    {
+      uint64_t max_rct_index = 0;
+      for (size_t idx : selected_transfers)
+      {
+        if (m_transfers[idx].is_rct())
+        {
+          max_rct_index = std::max(max_rct_index, m_transfers[idx].m_global_output_index);
+        }
+
+        if (!m_transfers[idx].is_rct() || !has_rct_distribution)
+        {
+          req_t.amounts.push_back(m_transfers[idx].is_rct() ? 0 : m_transfers[idx].amount());
+        }
+      }
+
+      if (has_rct_distribution)
+      {
+        THROW_WALLET_EXCEPTION_IF(rct_offsets.size() <= CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE, error::get_output_distribution, "Not enough rct outputs");
+        THROW_WALLET_EXCEPTION_IF(rct_offsets.back() <= max_rct_index, error::get_output_distribution, "Daemon reports suspicious number of rct outputs");
+      }
+    }
+
     if (!req_t.amounts.empty())
     {
       std::sort(req_t.amounts.begin(), req_t.amounts.end());
@@ -8164,7 +8118,7 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
     COMMAND_RPC_GET_OUTPUTS_BIN::response daemon_resp = AUTO_VAL_INIT(daemon_resp);
 
     std::unique_ptr<gamma_picker> gamma;
-    if (has_rct)
+    if (has_rct_distribution)
       gamma.reset(new gamma_picker(rct_offsets));
 
     size_t num_selected_transfers = 0;
@@ -8177,7 +8131,7 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
       // request more for rct in base recent (locked) coinbases are picked, since they're locked for longer
       size_t requested_outputs_count = base_requested_outputs_count + (td.is_rct() ? CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW - CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE : 0);
       size_t start = req.outputs.size();
-      bool use_histogram = amount != 0;
+      bool use_histogram = amount != 0 || !has_rct_distribution;
 
       const bool output_is_pre_fork = td.m_block_height < segregation_fork_height;
       uint64_t num_outs = 0, num_recent_outs = 0;
@@ -8361,7 +8315,7 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
 
           uint64_t i;
           const char *type = "";
-          if (amount == 0)
+          if (amount == 0 && has_rct_distribution)
           {
             THROW_WALLET_EXCEPTION_IF(!gamma, error::wallet_internal_error, "No gamma picker");
             // gamma distribution
@@ -8509,7 +8463,7 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
           break;
         }
       }
-      bool use_histogram = amount != 0;
+      bool use_histogram = amount != 0 || !has_rct_distribution;
       if (!use_histogram)
         num_outs = rct_offsets[rct_offsets.size() - CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE];
 
@@ -8525,7 +8479,10 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
         if (req.outputs[i].index == td.m_global_output_index)
           if (daemon_resp.outs[i].key == boost::get<txout_to_key>(td.m_tx.vout[td.m_internal_output_index].target).key)
             if (daemon_resp.outs[i].mask == mask)
+            {
               real_out_found = true;
+              break;
+            }
       }
       THROW_WALLET_EXCEPTION_IF(!real_out_found, error::wallet_internal_error,
           "Daemon response did not include the requested real output");
@@ -8646,20 +8603,25 @@ void wallet2::transfer_selected(const std::vector<cryptonote::tx_destination_ent
   }
 
   uint64_t found_money = 0;
-  for(size_t idx: selected_transfers)
+  uint32_t subaddr_account = 0;
+  bool has_rct = false;
+  for (size_t i = 0; i < selected_transfers.size(); i++)
   {
-    found_money += m_transfers[idx].amount();
-  }
+    size_t transfer_idx = selected_transfers[i];
+    transfer_details const &td = m_transfers[transfer_idx];
+    has_rct |= td.is_rct();
+    found_money += td.amount();
 
+    if (i == 0)
+      subaddr_account = m_transfers[transfer_idx].m_subaddr_index.major;
+    else
+      THROW_WALLET_EXCEPTION_IF(subaddr_account != m_transfers[transfer_idx].m_subaddr_index.major, error::wallet_internal_error, "the tx uses funds from multiple accounts");
+  }
   LOG_PRINT_L2("wanted " << print_money(needed_money) << ", found " << print_money(found_money) << ", fee " << print_money(fee));
   THROW_WALLET_EXCEPTION_IF(found_money < needed_money, error::not_enough_unlocked_money, found_money, needed_money - fee, fee);
 
-  uint32_t subaddr_account = m_transfers[*selected_transfers.begin()].m_subaddr_index.major;
-  for (auto i = ++selected_transfers.begin(); i != selected_transfers.end(); ++i)
-    THROW_WALLET_EXCEPTION_IF(subaddr_account != m_transfers[*i].m_subaddr_index.major, error::wallet_internal_error, "the tx uses funds from multiple accounts");
-
   if (outs.empty())
-    get_outs(outs, selected_transfers, fake_outputs_count); // may throw
+    get_outs(outs, selected_transfers, fake_outputs_count, has_rct); // may throw
 
   //prepare inputs
   LOG_PRINT_L2("preparing outputs");
@@ -8863,20 +8825,25 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
   }
 
   uint64_t found_money = 0;
-  for(size_t idx: selected_transfers)
+  uint32_t subaddr_account = 0;
+  bool has_rct = false;
+  for (size_t i = 0; i < selected_transfers.size(); i++)
   {
-    found_money += m_transfers[idx].amount();
-  }
+    size_t transfer_idx = selected_transfers[i];
+    transfer_details const &td = m_transfers[transfer_idx];
+    has_rct |= td.is_rct();
+    found_money += td.amount();
 
+    if (i == 0)
+      subaddr_account = m_transfers[transfer_idx].m_subaddr_index.major;
+    else
+      THROW_WALLET_EXCEPTION_IF(subaddr_account != m_transfers[transfer_idx].m_subaddr_index.major, error::wallet_internal_error, "the tx uses funds from multiple accounts");
+  }
   LOG_PRINT_L2("wanted " << print_money(needed_money) << ", found " << print_money(found_money) << ", fee " << print_money(fee));
   THROW_WALLET_EXCEPTION_IF(found_money < needed_money, error::not_enough_unlocked_money, found_money, needed_money - fee, fee);
 
-  uint32_t subaddr_account = m_transfers[*selected_transfers.begin()].m_subaddr_index.major;
-  for (auto i = ++selected_transfers.begin(); i != selected_transfers.end(); ++i)
-    THROW_WALLET_EXCEPTION_IF(subaddr_account != m_transfers[*i].m_subaddr_index.major, error::wallet_internal_error, "the tx uses funds from multiple accounts");
-
   if (outs.empty())
-    get_outs(outs, selected_transfers, fake_outputs_count); // may throw
+    get_outs(outs, selected_transfers, fake_outputs_count, has_rct); // may throw
 
   //prepare inputs
   LOG_PRINT_L2("preparing outputs");
@@ -9071,90 +9038,52 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
 
 std::vector<size_t> wallet2::pick_preferred_rct_inputs(uint64_t needed_money, uint32_t subaddr_account, const std::set<uint32_t> &subaddr_indices) const
 {
-  struct pick_out
-  {
-    pick_out(size_t idx, uint64_t amount, uint64_t blk_height) : idx(idx), amount(amount), blk_height(blk_height) {}
-    size_t idx;
-    uint64_t amount;
-    uint64_t blk_height;
-  };
-
   std::vector<size_t> picks;
   float current_output_relatdness = 1.0f;
-  std::vector<pick_out> pick_list;
-  pick_list.reserve(m_transfers.size());
 
   LOG_PRINT_L2("pick_preferred_rct_inputs: needed_money " << print_money(needed_money));
-
-  // Highest and second highest available amounts to choose from
-  uint64_t amount_a = 0;
-  uint64_t amount_b = 0;
-  // Check if the pick_list is sorted
-  uint64_t last_block = 0;
-  bool sorted = true;
 
   // try to find a rct input of enough size
   for (size_t i = 0; i < m_transfers.size(); ++i)
   {
     const transfer_details& td = m_transfers[i];
-    if (!is_spent(td, false) && !td.m_frozen && !td.m_key_image_partial && td.is_rct() && is_transfer_unlocked(td) && td.m_subaddr_index.major == subaddr_account && subaddr_indices.count(td.m_subaddr_index.minor) == 1)
+    if (!is_spent(td, false) && !td.m_frozen && td.is_rct() && td.amount() >= needed_money && is_transfer_unlocked(td) && td.m_subaddr_index.major == subaddr_account && subaddr_indices.count(td.m_subaddr_index.minor) == 1)
     {
-      uint64_t amt = td.amount();
-      if (amt > m_ignore_outputs_above || amt < m_ignore_outputs_below)
+      if (td.amount() > m_ignore_outputs_above || td.amount() < m_ignore_outputs_below)
       {
-        MDEBUG("Ignoring output " << i << " of amount " << print_money(amt) << " which is outside prescribed range [" << print_money(m_ignore_outputs_below) << ", " << print_money(m_ignore_outputs_above) << "]");
+        MDEBUG("Ignoring output " << i << " of amount " << print_money(td.amount()) << " which is outside prescribed range [" << print_money(m_ignore_outputs_below) << ", " << print_money(m_ignore_outputs_above) << "]");
         continue;
       }
-      if(amt >= needed_money)
-      {
-        LOG_PRINT_L2("We can use " << i << " alone: " << print_money(amt));
-        picks.push_back(i);
-        return picks;
-      }
-
-      pick_list.emplace_back(i, amt, td.m_block_height);
-      if(amt > amount_a)
-      {
-        amount_b = amount_a;
-        amount_a = amt;
-      }
-
-      if(td.m_block_height < last_block)
-        sorted = false;
-      last_block = td.m_block_height;
+      LOG_PRINT_L2("We can use " << i << " alone: " << print_money(td.amount()));
+      picks.push_back(i);
+      return picks;
     }
   }
-
-  if(amount_a + amount_b < needed_money)
-    return picks;
-
-  if(!sorted)
-    std::sort(pick_list.begin(), pick_list.end(), [](const pick_out& a, const pick_out& b)
-    {
-      return a.blk_height < b.blk_height;
-    });
-  else
-    LOG_PRINT_L2("pick_preferred_rct_inputs: sort skipped, we are sorted already");
 
   // then try to find two outputs
   // this could be made better by picking one of the outputs to be a small one, since those
   // are less useful since often below the needed money, so if one can be used in a pair,
   // it gets rid of it for the future
-  for (size_t i = 0; i < pick_list.size(); i++)
+  for (size_t i = 0; i < m_transfers.size(); ++i)
   {
-    LOG_PRINT_L2("Considering input " << pick_list[i].idx << ", " << print_money(pick_list[i].amount));
-    for(size_t j = pick_list.size(); j-- > i+1;)
+    const transfer_details& td = m_transfers[i];
+    if (!is_spent(td, false) && !td.m_frozen && !td.m_key_image_partial && td.is_rct() && is_transfer_unlocked(td) && td.m_subaddr_index.major == subaddr_account && subaddr_indices.count(td.m_subaddr_index.minor) == 1)
     {
-      if(pick_list[i].amount + pick_list[j].amount >= needed_money)
+      if (td.amount() > m_ignore_outputs_above || td.amount() < m_ignore_outputs_below)
       {
-        size_t i_idx = pick_list[i].idx;
-        size_t j_idx = pick_list[j].idx;
-        const transfer_details &td = m_transfers[i_idx];
-        const transfer_details &td2 = m_transfers[j_idx];
-
-        float relatedness = get_output_relatedness(td, td2);
-        LOG_PRINT_L2("  with input " << j_idx  << ", " << pick_list[j].amount << ", relatedness " << relatedness);
-        if(relatedness < current_output_relatdness)
+        MDEBUG("Ignoring output " << i << " of amount " << print_money(td.amount()) << " which is outside prescribed range [" << print_money(m_ignore_outputs_below) << ", " << print_money(m_ignore_outputs_above) << "]");
+        continue;
+      }
+      LOG_PRINT_L2("Considering input " << i << ", " << print_money(td.amount()));
+      for (size_t j = i + 1; j < m_transfers.size(); ++j)
+      {
+        const transfer_details& td2 = m_transfers[j];
+        if (td2.amount() > m_ignore_outputs_above || td2.amount() < m_ignore_outputs_below)
+        {
+          MDEBUG("Ignoring output " << j << " of amount " << print_money(td2.amount()) << " which is outside prescribed range [" << print_money(m_ignore_outputs_below) << ", " << print_money(m_ignore_outputs_above) << "]");
+          continue;
+        }
+        if (!is_spent(td2, false) && !td2.m_frozen && !td2.m_key_image_partial && td2.is_rct() && td.amount() + td2.amount() >= needed_money && is_transfer_unlocked(td2) && td2.m_subaddr_index == td.m_subaddr_index)
         {
           // update our picks if those outputs are less related than any we
           // already found. If the same, don't update, and oldest suitable outputs
@@ -9167,9 +9096,9 @@ std::vector<size_t> wallet2::pick_preferred_rct_inputs(uint64_t needed_money, ui
             // if they're unrelated. If they are related, we'll end up returning
             // them if we find nothing better
             picks.clear();
-            picks.push_back(i_idx);
-            picks.push_back(j_idx);
-            LOG_PRINT_L0("we could use " << i_idx << " and " << j_idx);
+            picks.push_back(i);
+            picks.push_back(j);
+            LOG_PRINT_L0("we could use " << i << " and " << j);
             if (relatedness == 0.0f)
               return picks;
             current_output_relatdness = relatedness;
@@ -9823,9 +9752,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
   // early out if we know we can't make it anyway
   // we could also check for being within FEE_PER_KB, but if the fee calculation
   // ever changes, this might be missed, so let this go through
-  uint64_t min_fee = fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof);
-  if(!use_per_byte_fee) min_fee /= 1024;
-
+  const uint64_t min_fee = ((fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof)) / 1024);
   uint64_t balance_subtotal = 0;
   uint64_t unlocked_balance_subtotal = 0;
   for (uint32_t index_minor : subaddr_indices)

@@ -1391,13 +1391,12 @@ namespace cryptonote
     uint64_t best_coinbase = 0, coinbase = 0;
     total_weight = 0;
     fee = 0;
-    uint64_t height = m_blockchain.get_current_blockchain_height();
 
     //baseline empty block
 	miner_reward_context block_reward_context = {};
 
 	block_reward_parts reward_parts = {};
-    if (!get_triton_block_reward(median_weight, total_weight, already_generated_coins, version, reward_parts, block_reward_context, height, MAINNET))
+    if (!	get_triton_block_reward(median_weight, total_weight, already_generated_coins, version, reward_parts, block_reward_context, MAINNET))
     {
       MERROR("Failed to get block reward for empty block");
       return false;
@@ -1447,7 +1446,7 @@ namespace cryptonote
       if (version >= SERVICE_NODE_VERSION)
       {
 		  block_reward_parts reward_parts_other = {};
-		  if (!get_triton_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, version, reward_parts_other, block_reward_context, height, MAINNET))
+		  if (!get_triton_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, version, reward_parts_other, block_reward_context, MAINNET))
 
         {
           LOG_PRINT_L2("  would exceed maximum block weight");

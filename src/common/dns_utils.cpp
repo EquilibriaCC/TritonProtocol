@@ -31,7 +31,6 @@
 #include "unbound.h"
 
 #include <stdlib.h>
-#include <deque>
 #include "include_base_utils.h"
 #include "common/threadpool.h"
 #include "crypto/crypto.h"

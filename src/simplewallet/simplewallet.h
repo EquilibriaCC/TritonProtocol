@@ -294,8 +294,8 @@ namespace cryptonote
       struct dest_output
       {
         std::string wallet_addr;
-        uint64_t    amount;
-        uint64_t    unlock_time;
+        uint64_t amount;
+        uint64_t unlock_time;
       };
 
       boost::variant<uint64_t, std::string> block;
@@ -309,7 +309,7 @@ namespace cryptonote
       std::vector<dest_output> outputs;
       std::set<uint32_t> index;
       std::string note;
-      std::string lock_msg;
+      std::string unlocked;
     };
     bool get_transfers(std::vector<std::string>& args_, std::vector<transfer_view>& transfers);
 
