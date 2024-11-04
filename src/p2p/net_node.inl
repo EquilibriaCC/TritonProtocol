@@ -621,8 +621,11 @@ namespace nodetool
     }
     else
     {
-      full_addrs.insert("158.220.116.207:9230"); // eu central
-      full_addrs.insert("207.244.246.19:9230"); // us central
+      full_addrs.insert("158.220.116.207:9230");  // eu-central-1
+      full_addrs.insert("84.247.131.112:9230");   // eu-central-2
+      full_addrs.insert("207.244.246.19:9230");   // us-central-1
+      full_addrs.insert("62.146.181.0:9230");     // us-central-2
+      full_addrs.insert("46.250.241.236:9230");   // au-east-1
     }
     return full_addrs;
   }
