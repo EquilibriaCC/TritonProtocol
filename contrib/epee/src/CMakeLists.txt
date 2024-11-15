@@ -29,7 +29,7 @@
 
 add_library(epee STATIC byte_slice.cpp byte_stream.cpp hex.cpp abstract_http_client.cpp http_auth.cpp mlog.cpp net_helper.cpp net_utils_base.cpp string_tools.cpp
     wipeable_string.cpp levin_base.cpp memwipe.c connection_basic.cpp network_throttle.cpp network_throttle-detail.cpp mlocker.cpp buffer.cpp net_ssl.cpp
-    int-util.cpp file_io_utils.cpp portable_storage.cpp misc_language.cpp)
+    int-util.cpp file_io_utils.cpp portable_storage.cpp misc_language.cpp misc_os_dependent.cpp net_parse_helpers.cpp tiny_ini.cpp)
 
 if(TARGET readline)
   target_sources(epee PUBLIC readline_buffer.cpp)

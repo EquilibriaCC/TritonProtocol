@@ -30,6 +30,7 @@
 #include "common/command_line.h"
 #include "daemon/command_parser_executor.h"
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #undef XEQ_DEFAULT_LOG_CATEGORY
 #define XEQ_DEFAULT_LOG_CATEGORY "daemon"
