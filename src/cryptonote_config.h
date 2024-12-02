@@ -279,6 +279,9 @@ namespace config
   std::string const DEV_FUND_WALLET = "TvzdbKGga5fSr7fgCTuvR1GY4g9v3No28a6QrcdnnwBkFtisk4MKPLnARAunWBxQJ82L96nGS3ET7BQMhzM788Kp1pweuUfPD";
   std::string const NEW_GOV_WALLET = "TvzXGov4tNr6jYG2gdox7bcuEBwwSTpQYAb6w7qgSxuu4hsxY9CMgMgaL6EeqVcQ6hS7Cppn73W8ZSMU8gLMi4N42yTShfkP9";
   std::string const NEW_DEV_WALLET = "Tw1XDEVkfVsRFhvjPQJgTjFi4uXDBiMomYeaaaj43SHPSTyLj8nBkdv2KBV8t9CzuCUy1fgYkk9tse6xA3B5oPJZ1jLfHLDrh";
+  std::string const HOR_GOV_WALLET = "Tw18Upu92dy7T5Xe9NSey5ZwrTD42FSQP63B1yz5phVxZo6yNv3fnXxD6N38k72wxEf1SXCwUt55ZVSCguvLWLh62qAbTAvKT";
+  std::string const HOR_DEV_WALLET = "TvzZDh7fe8pQVh6k5LG6KrCEMMYQf6KkFYLUX1rtaMopSR47NkCXkFmAg5tKJqbFdSgmarBYEvEt14Ekh1j96ZCD16sz548KE";
+
 
   namespace testnet
   {

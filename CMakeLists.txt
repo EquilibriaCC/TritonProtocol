@@ -33,6 +33,8 @@ message(STATUS "CMake version ${CMAKE_VERSION}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+add_definitions(-DPTHREAD_STACK_MIN=16384)
+
 list(INSERT CMAKE_MODULE_PATH 0
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CheckCCompilerFlag)

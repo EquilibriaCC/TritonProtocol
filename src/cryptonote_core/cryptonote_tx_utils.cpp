@@ -479,8 +479,10 @@ namespace cryptonote
         cryptonote::get_account_address_from_str(governance_wallet_address, nettype, *cryptonote::get_config(nettype).BRIDGE_WALLET_ADDRESS);
       } else if (hard_fork_version < 19) {
         cryptonote::get_account_address_from_str(governance_wallet_address, nettype, *cryptonote::get_config(nettype).NEW_BRIDGE_WALLET_ADDRESS);
-      } else {
+      } else if (hard_fork_version < 22) {
         cryptonote::get_account_address_from_str(governance_wallet_address, nettype, *cryptonote::get_config(nettype).NEW_GOV_WALLET);
+      } else {
+        cryptonote::get_account_address_from_str(governance_wallet_address, nettype, *cryptonote::get_config(nettype).HOR_GOV_WALLET);
       }
       crypto::public_key out_eph_public_key{};
 
@@ -504,8 +506,10 @@ namespace cryptonote
     cryptonote::address_parse_info dev_fund_wallet_address;
     if (hard_fork_version < 19) {
       cryptonote::get_account_address_from_str(dev_fund_wallet_address, nettype, *cryptonote::get_config(nettype).DEV_FUND_WALLET);
-    } else {
+    } else if (hard_fork_version < 22) {
       cryptonote::get_account_address_from_str(dev_fund_wallet_address, nettype, *cryptonote::get_config(nettype).NEW_DEV_WALLET);
+    } else {
+      cryptonote::get_account_address_from_str(dev_fund_wallet_address, nettype, *cryptonote::get_config(nettype).HOR_DEV_WALLET);
     }
     crypto::public_key out_eph_public_key{};
 

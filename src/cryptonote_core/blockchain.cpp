@@ -1353,7 +1353,14 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
           return false;
         }
 
-        if (hard_fork_version >= 19)
+        if (hard_fork_version >= 22)
+        {
+          if (!validate_governance_reward_key(height, *cryptonote::get_config(m_nettype).HOR_GOV_WALLET, vout_end - 2, boost::get<cryptonote::txout_to_key>(b.miner_tx.vout[vout_end - 2].target).key, m_nettype))
+          {
+            MERROR("Governance reward public key incorrect");
+            return false;
+          }
+        } else if (hard_fork_version >= 19)
         {
           if (!validate_governance_reward_key(height, *cryptonote::get_config(m_nettype).NEW_GOV_WALLET, vout_end - 2, boost::get<cryptonote::txout_to_key>(b.miner_tx.vout[vout_end - 2].target).key, m_nettype))
           {
@@ -1376,7 +1383,14 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
           return false;
         }
 
-        if (hard_fork_version >= 19)
+        if (hard_fork_version >= 22)
+        {
+          if (!validate_dev_fund_reward_key(height, *cryptonote::get_config(m_nettype).HOR_DEV_WALLET, vout_end - 1, boost::get<cryptonote::txout_to_key>(b.miner_tx.vout[vout_end - 1].target).key, m_nettype))
+          {
+            MERROR("Dev fund reward public key incorrect");
+            return false;
+          }
+        } else if (hard_fork_version >= 19)
         {
           if (!validate_dev_fund_reward_key(height, *cryptonote::get_config(m_nettype).NEW_DEV_WALLET, vout_end - 1, boost::get<cryptonote::txout_to_key>(b.miner_tx.vout[vout_end - 1].target).key, m_nettype))
           {
@@ -1402,7 +1416,14 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
           return false;
         }
 
-        if (hard_fork_version >= 19)
+        if (hard_fork_version >= 22)
+        {
+          if (!validate_dev_fund_reward_key(height, *cryptonote::get_config(m_nettype).HOR_DEV_WALLET, b.miner_tx.vout.size() - 1, boost::get<txout_to_key>(b.miner_tx.vout.back().target).key, m_nettype))
+          {
+            MERROR("Dev Fund reward public key incorrect");
+            return false;
+          }
+        } else if (hard_fork_version >= 19)
         {
           if (!validate_dev_fund_reward_key(height, *cryptonote::get_config(m_nettype).NEW_DEV_WALLET, b.miner_tx.vout.size() - 1, boost::get<txout_to_key>(b.miner_tx.vout.back().target).key, m_nettype))
           {
