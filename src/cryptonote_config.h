@@ -381,6 +381,8 @@ namespace cryptonote
     std::string const *DEV_FUND_WALLET;
     std::string const *NEW_GOV_WALLET;
     std::string const *NEW_DEV_WALLET;
+    std::string const *HOR_GOV_WALLET;
+    std::string const *HOR_DEV_WALLET;
 
   };
   inline const config_t& get_config(network_type nettype)
@@ -401,6 +403,8 @@ namespace cryptonote
       &::config::DEV_FUND_WALLET,
       &::config::NEW_GOV_WALLET,
       &::config::NEW_DEV_WALLET,
+      &::config::HOR_GOV_WALLET,
+      &::config::HOR_DEV_WALLET
     };
     static config_t testnet = {
       ::config::testnet::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
@@ -431,7 +435,7 @@ namespace cryptonote
       &::config::stagenet::NEW_BRIDGE_WALLET_ADDRESS,
       &::config::stagenet::DEV_FUND_WALLET,
       &::config::stagenet::NEW_GOV_WALLET,
-      &::config::stagenet::NEW_DEV_WALLET,
+      &::config::stagenet::NEW_DEV_WALLET
     };
     switch (nettype)
     {
