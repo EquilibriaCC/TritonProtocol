@@ -322,7 +322,8 @@ namespace config
   std::string const DEV_FUND_WALLET = "XES1TLv45CSe2ufGVvUF3U3FBr6vmz7hNX2pEns7U3HQ4PbTEJ4o1f2XyAf3DTbx8Y1BWvdSfrbQL4EVbfzcU1uz7na8yAk6Yi";
   std::string const NEW_GOV_WALLET = "XES1Qh2ErQHiYRSNdjbhK2YYU3vfGFGj298SwYBQVvb5eiymct5EmXcFJD2pGuVY2c1TLtDnwpicBhP2i9VatN8e6AqcYzeUHq";
   std::string const NEW_DEV_WALLET = "XES1McEbjv3gZhBwhFaYDqF7fmkcFA9sg4zEuv9wpJwgHHh6iZ891Qu1kcn2TUGHZSGBf4shzYuBndDRf1DAtsq23X4L1Enmpz";
-
+  std::string const HOR_GOV_WALLET = "Tw1VBo6gXfWLJs9qXWHKiM7ddTxMkgjWReggncSunztvbcdr9BYkhGefNUooshCBBAZYYutf1Sb2JXAiypcsQTF51r2VFYJY8";
+  std::string const HOR_DEV_WALLET = "Tw1TAVneuNL5cyexcrEdTV25QhroBN8VhZQXCGANJj4Dj5r5Y8MhLjxMATrcLn3WSRNgjc7AHvTwZP2ADYypqgzC2HiBZ3A3E";
   }
 }
 
@@ -435,7 +436,9 @@ namespace cryptonote
       &::config::stagenet::NEW_BRIDGE_WALLET_ADDRESS,
       &::config::stagenet::DEV_FUND_WALLET,
       &::config::stagenet::NEW_GOV_WALLET,
-      &::config::stagenet::NEW_DEV_WALLET
+      &::config::stagenet::NEW_DEV_WALLET,
+      &::config::stagenet::HOR_GOV_WALLET,
+      &::config::stagenet::HOR_DEV_WALLET
     };
     switch (nettype)
     {
