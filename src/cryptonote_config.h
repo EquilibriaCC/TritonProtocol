@@ -279,6 +279,9 @@ namespace config
   std::string const DEV_FUND_WALLET = "TvzdbKGga5fSr7fgCTuvR1GY4g9v3No28a6QrcdnnwBkFtisk4MKPLnARAunWBxQJ82L96nGS3ET7BQMhzM788Kp1pweuUfPD";
   std::string const NEW_GOV_WALLET = "TvzXGov4tNr6jYG2gdox7bcuEBwwSTpQYAb6w7qgSxuu4hsxY9CMgMgaL6EeqVcQ6hS7Cppn73W8ZSMU8gLMi4N42yTShfkP9";
   std::string const NEW_DEV_WALLET = "Tw1XDEVkfVsRFhvjPQJgTjFi4uXDBiMomYeaaaj43SHPSTyLj8nBkdv2KBV8t9CzuCUy1fgYkk9tse6xA3B5oPJZ1jLfHLDrh";
+  std::string const HOR_GOV_WALLET = "Tw18Upu92dy7T5Xe9NSey5ZwrTD42FSQP63B1yz5phVxZo6yNv3fnXxD6N38k72wxEf1SXCwUt55ZVSCguvLWLh62qAbTAvKT";
+  std::string const HOR_DEV_WALLET = "TvzZDh7fe8pQVh6k5LG6KrCEMMYQf6KkFYLUX1rtaMopSR47NkCXkFmAg5tKJqbFdSgmarBYEvEt14Ekh1j96ZCD16sz548KE";
+
 
   namespace testnet
   {
@@ -319,7 +322,8 @@ namespace config
   std::string const DEV_FUND_WALLET = "XES1TLv45CSe2ufGVvUF3U3FBr6vmz7hNX2pEns7U3HQ4PbTEJ4o1f2XyAf3DTbx8Y1BWvdSfrbQL4EVbfzcU1uz7na8yAk6Yi";
   std::string const NEW_GOV_WALLET = "XES1Qh2ErQHiYRSNdjbhK2YYU3vfGFGj298SwYBQVvb5eiymct5EmXcFJD2pGuVY2c1TLtDnwpicBhP2i9VatN8e6AqcYzeUHq";
   std::string const NEW_DEV_WALLET = "XES1McEbjv3gZhBwhFaYDqF7fmkcFA9sg4zEuv9wpJwgHHh6iZ891Qu1kcn2TUGHZSGBf4shzYuBndDRf1DAtsq23X4L1Enmpz";
-
+  std::string const HOR_GOV_WALLET = "Tw1VBo6gXfWLJs9qXWHKiM7ddTxMkgjWReggncSunztvbcdr9BYkhGefNUooshCBBAZYYutf1Sb2JXAiypcsQTF51r2VFYJY8";
+  std::string const HOR_DEV_WALLET = "Tw1TAVneuNL5cyexcrEdTV25QhroBN8VhZQXCGANJj4Dj5r5Y8MhLjxMATrcLn3WSRNgjc7AHvTwZP2ADYypqgzC2HiBZ3A3E";
   }
 }
 
@@ -378,6 +382,8 @@ namespace cryptonote
     std::string const *DEV_FUND_WALLET;
     std::string const *NEW_GOV_WALLET;
     std::string const *NEW_DEV_WALLET;
+    std::string const *HOR_GOV_WALLET;
+    std::string const *HOR_DEV_WALLET;
 
   };
   inline const config_t& get_config(network_type nettype)
@@ -398,6 +404,8 @@ namespace cryptonote
       &::config::DEV_FUND_WALLET,
       &::config::NEW_GOV_WALLET,
       &::config::NEW_DEV_WALLET,
+      &::config::HOR_GOV_WALLET,
+      &::config::HOR_DEV_WALLET
     };
     static config_t testnet = {
       ::config::testnet::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
@@ -429,6 +437,8 @@ namespace cryptonote
       &::config::stagenet::DEV_FUND_WALLET,
       &::config::stagenet::NEW_GOV_WALLET,
       &::config::stagenet::NEW_DEV_WALLET,
+      &::config::stagenet::HOR_GOV_WALLET,
+      &::config::stagenet::HOR_DEV_WALLET
     };
     switch (nettype)
     {
